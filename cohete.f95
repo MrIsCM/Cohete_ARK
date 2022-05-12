@@ -14,6 +14,7 @@ program cohete
 	integer :: t 	! Parametro de iteración temporal
 
 	integer, parameter :: t_max = 1000
+	real, parameter :: m = 20000 		! Masa del cohete [Kg]
 	
 	! Datos del problema
 	double precision :: Mt, Ml, m, G, dtl, w, Rt, Rl  
