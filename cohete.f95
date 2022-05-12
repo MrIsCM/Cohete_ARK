@@ -16,10 +16,16 @@ program cohete
 	integer, parameter :: t_max = 1000
 	
 	! Datos del problema
-	double precision :: Mt, Ml, m, G, dtl, w, Rt, Rl  
+	real :: Mt, Ml, m, G, dtl, w, Rt, Rl
+
+	! Coordenadas
+	real :: r, phi
 
 	!Factores de escala
-	double precision :: fr, fpr, fpphi
+	real :: fr, fpr, fpphi
+
+	!Variables utilidad. Simplificar expresiones
+	real :: delta, mu, r_p
 
 
 	!========================
@@ -55,8 +61,20 @@ program cohete
 	! Archivo para guardar la posición del cohete
 	open(10, file='Data/Pos.dat', status='Unknown')
 
+	! Asignacion de condiciones iniciales
+	! r = 
+	! phi = 
+	! pr =
+	! pphi = 
+
+
 	! Bucle temporal
-	do t = 0, t_max 	
+	do t = 0, t_max
+		delta = G*Mt/dtl**3
+		mu = Ml/Mt
+		r_p = (1+r**2-2*r*cos(phi-w*t))
+
+
 
 	end do
 
@@ -64,18 +82,113 @@ program cohete
 	
 end program cohete
 
-subroutine alg_RK(G, Mt, Ml, dtl, w, Rt, Rl, m, x_pos, y_pos)
-	double precision, intent(in) :: G, Mt, Ml, dtl, w, Rt, Rl
-	double precision, intent(inout) ::  x_pos, y_pos
+subroutine alg_RK_rdot(pr, h, result)
+	implicit none
+	real, intent(in) :: h
+	real, intent(out) :: pr, result
 
+	real, dimension(4) :: K
+	real :: fy, y0
 
-	
-end subroutine alg_RK
+	call r_dt(pr, fy)
+	y0 = fy
+	K(1) = h*fy
+
+	call r_dt(pr+K(1)/2, fy)
+	K(2) = h*fy
+
+	call r_dt(pr+K(2)/2, fy)
+	K(3)=h*fy 
+
+	call r_dt(pr+K(3), fy)
+	K(4)=h*fy
+
+	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
+
+end subroutine alg_RK_rdot
+
+subroutine alg_RK_phidot(pphi, h, result)
+	implicit none
+	real, intent(in) :: h
+	real, intent(out) :: pphi, result
+
+	real, dimension(4) :: K
+	real :: fy, y0
+
+	call phi_dt(pphi, fy)
+	y0 = fy
+	K(1) = h*fy
+
+	call phi_dt(pphi+K(1)/2, fy)
+	K(2) = h*fy
+
+	call phi_dt(pphi+K(2)/2, fy)
+	K(3)=h*fy 
+
+	call phi_dt(pphi+K(3), fy)
+	K(4)=h*fy
+
+	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
+
+end subroutine alg_RK_phidot
+
+subroutine alg_RK_prdot(h, pphi, delta, mu, r, r_p, phi, w, t, result)
+	implicit none
+	integer, intent(in) :: t
+	real, intent(in) :: h, pphi, delta, mu, r, r_p, phi, w
+	real, intent(out) :: result
+
+	real, dimension(4) :: K
+	real :: fy, y0
+
+	call dpr_dt(pphi, delta, mu, r, r_p, phi, w, t, fy)
+	y0 = fy
+	K(1) = h*fy
+
+	call dpr_dt(pphi+K(1)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
+	K(2) = h*fy
+
+	call dpr_dt(pphi+K(2)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
+	K(3)=h*fy 
+
+	call dpr_dt(pphi+K(3), delta, mu, r, r_p, phi, w, t+h, fy)
+	K(4)=h*fy
+
+	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
+
+end subroutine alg_RK_prdot
+
+subroutine alg_RK_pphidot(h, delta, mu, r, r_p, phi, w, t, result)
+	implicit none
+	integer, intent(in) :: t
+	real, intent(in) :: h, delta, mu, r, r_p, phi, w
+	real, intent(out) :: result
+
+	real, dimension(4) :: K
+	real :: fy, y0
+
+	call dpo_dt(t, delta, mu, r, r_p, phi, w, fy)
+	y0 = fy
+	K(1) = h*fy
+
+	call dpo_dt(pphi+K(1)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
+	K(2) = h*fy
+
+	call dpo_dt(pphi+K(2)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
+	K(3)=h*fy 
+
+	call dpo_dt(pphi+K(3), delta, mu, r, r_p, phi, w, t+h, fy)
+	K(4)=h*fy
+
+	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
+
+end subroutine alg_RK_pphidot
 
 !----------------------
 ! 	(1) r/dt = ...
 !----------------------
 subroutine r_dt(pr, result)
+	implicit none
 	real, intent(in) :: pr 
 	real, intent(out) :: result
 
@@ -87,6 +200,7 @@ end subroutine r_dt
 ! 	(2) phi/dt = ...
 !----------------------
 subroutine phi_dt(pphi, result)
+	implicit none
 	real, intent(in) :: pphi
 	real, intent(out) :: result
 
@@ -98,19 +212,22 @@ end subroutine phi_dt
 !----------------------
 ! 	(3) dp_r/dt = ...
 !----------------------
-subroutine dp_dt(p_phi, delta, mu, r, r_p, phi, w, t, result)
+subroutine dpr_dt(p_phi, delta, mu, r, r_p, phi, w, t, result)
+	implicit none
 	real, intent(in) :: p_phi, delta, mu, r, r_p, phi, w, t
 	real, intent(out) :: result
 
 	result = p_phi**2/r**3 - delta*(1/r**2 + mu/r_p**3 *(r - cos(phi-w*t)))
 	
-end subroutine dp_dt
+end subroutine dpr_dt
 
 
 !----------------------
 ! 	(4) dp_phi/dt = ...
 !----------------------
-subroutine dpo_dt(delta, mu, r, r_p, phi, w, result)
+subroutine dpo_dt(t, delta, mu, r, r_p, phi, w, result)
+	implicit none
+	integer, intent(in) :: t 
 	real, intent(in) :: delta, mu, r, r_p, phi, w
 	real, intent(out) :: result
 
@@ -124,6 +241,7 @@ end subroutine dpo_dt
 !	 para EDOs de cualquier tipo, definiendo f en este apartado
 !---------------------------------------------------------------
 ! subroutine f(x, y, result)
+!	implicit none
 ! 	real, intent(in) :: x, y
 ! 	real, intent(out) :: result
 
