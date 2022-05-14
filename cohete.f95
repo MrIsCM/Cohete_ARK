@@ -10,16 +10,18 @@
 program cohete
 	implicit none
 
-	real :: h 		! Parametro de discretizacion 
-	integer :: t 	! Parametro de iteración temporal
+	! Parametro de iteración temporal
+	! Parametro de discretizacion
+	real :: t, h 		 
 
-	integer, parameter :: t_max = 1000
+	integer, parameter :: t_max = 6000
 	
 	! Datos del problema
 	real :: Mt, Ml, m, G, dtl, w, Rt, Rl
 
 	! Coordenadas
-	real :: r, phi
+	real :: r, phi, pr, pphi
+	real :: y(4)
 
 	!Factores de escala
 	real :: fr, fpr, fpphi
@@ -58,163 +60,113 @@ program cohete
 
 
 
-	! Archivo para guardar la posición del cohete
-	open(10, file='Data/Pos.dat', status='Unknown')
-
 	! Asignacion de condiciones iniciales
-	! r = 
-	! phi = 
-	! pr =
-	! pphi = 
+	r = Rt 			! Despega de la Tierra
+	r = r*fr 
+	phi = 2 		! *Parece* arbitrario
+	pr = 1000 		! ~ Vel. escape [m/s]
+	pr = pr*fr 
+	pphi = 1
 
+	y = (/r, phi, pr, pphi/)
+
+	! Constantes de utilidad (simplificacion de expresiones)
+	delta = G*Mt/dtl**3
+	mu = Ml/Mt
+
+	! Archivo para guardar la posición del cohete
+	open(12, file='Data/Pos.dat', status='Unknown')
 
 	! Bucle temporal
-	do t = 0, t_max
-		delta = G*Mt/dtl**3
-		mu = Ml/Mt
-		r_p = (1+r**2-2*r*cos(phi-w*t))
+	t=0
+	do while (t<t_max)
+		! Calculo distancia Luna-Nave (reescalado)
+		r_p = (1+r**2-2*r*cos(phi-w*t)) 
+		call alg_RK(delta, mu, r_p, w, h, y, t)
+		write(12,*) t, y(1)+Rt*fr, y(2)
+		t = t+h 
+	end do 
 
-
-
-	end do
-
-	close(10)
+	close(12)
 	
 end program cohete
 
-subroutine alg_RK_rdot(pr, h, result)
+subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 	implicit none
 	real, intent(in) :: h
-	real, intent(out) :: pr, result
 
-	real, dimension(4) :: K
-	real :: fy, y0
+	! Constantes presentes en las ecs. mov
+	real, intent(in) :: delta, mu, r_p, w	
 
-	call r_dt(pr, fy)
-	y0 = fy
-	K(1) = h*fy
+	! Coordenadas
+	real, intent(inout) :: t 		! t
+	real, intent(inout) :: y(4) 	! y_n(t) 	[n=1,2,3,4]
 
-	call r_dt(pr+K(1)/2, fy)
-	K(2) = h*fy
+	integer :: i, j
+	real :: K(4,4), f_ynt
 
-	call r_dt(pr+K(2)/2, fy)
-	K(3)=h*fy 
+	do i = 1, 4
+		call fn(y(1), y(2), y(3), y(4), t, delta, mu, r_p, w, i, f_ynt)
+		K(i,1) = h*f_ynt
 
-	call r_dt(pr+K(3), fy)
-	K(4)=h*fy
+		call fn(y(1) + K(1,1)/2, y(2)+ K(2,1)/2, y(3)+ K(3,1)/2, y(4)+ K(4,1)/2, t+h/2, delta, mu, r_p, w, i, f_ynt)
+		K(i,1) = h*f_ynt
 
-	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
+		call fn(y(1) + K(1,2)/2, y(2)+ K(2,2)/2, y(3)+ K(3,2)/2, y(4)+ K(4,2)/2, t+h/2, delta, mu, r_p, w, i, f_ynt)
+		K(i,1) = h*f_ynt
 
-end subroutine alg_RK_rdot
+		call fn(y(1) + K(1,3), y(2)+ K(2,3), y(3)+ K(3,3), y(4)+ K(4,3), t+h/2, delta, mu, r_p, w, i, f_ynt)
+		K(i,1) = h*f_ynt
+	end do
 
-subroutine alg_RK_phidot(pphi, h, result)
-	implicit none
-	real, intent(in) :: h
-	real, intent(out) :: pphi, result
+	do i = 1, 4
+		y(i) = y(i) + (K(i,1) + 2*K(i,2) + 2*K(i,3) + K(i,4))/6
+	end do
 
-	real, dimension(4) :: K
-	real :: fy, y0
+	open(10, file='Data/k.dat', status='unknown')
+	open(11, file='Data/y.dat', status='unknown')
+	do i = 1, 4
+		write(10,*) (K(i, j), j=1,4)
+		write(11,*) t, y(i)
 
-	call phi_dt(pphi, fy)
-	y0 = fy
-	K(1) = h*fy
+	end do
+	close(10)
+	close(11)
+	
+end subroutine alg_RK
 
-	call phi_dt(pphi+K(1)/2, fy)
-	K(2) = h*fy
-
-	call phi_dt(pphi+K(2)/2, fy)
-	K(3)=h*fy 
-
-	call phi_dt(pphi+K(3), fy)
-	K(4)=h*fy
-
-	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
-
-end subroutine alg_RK_phidot
-
-subroutine alg_RK_prdot(h, pphi, delta, mu, r, r_p, phi, w, t, result)
-	implicit none
-	integer, intent(in) :: t
-	real, intent(in) :: h, pphi, delta, mu, r, r_p, phi, w
-	real, intent(out) :: result
-
-	real, dimension(4) :: K
-	real :: fy, y0
-
-	call dpr_dt(pphi, delta, mu, r, r_p, phi, w, t, fy)
-	y0 = fy
-	K(1) = h*fy
-
-	call dpr_dt(pphi+K(1)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
-	K(2) = h*fy
-
-	call dpr_dt(pphi+K(2)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
-	K(3)=h*fy 
-
-	call dpr_dt(pphi+K(3), delta, mu, r, r_p, phi, w, t+h, fy)
-	K(4)=h*fy
-
-	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
-
-end subroutine alg_RK_prdot
-
-subroutine alg_RK_pphidot(h, delta, mu, r, r_p, phi, w, t, result)
-	implicit none
-	integer, intent(in) :: t
-	real, intent(in) :: h, delta, mu, r, r_p, phi, w
-	real, intent(out) :: result
-
-	real, dimension(4) :: K
-	real :: fy, y0
-
-	call dpo_dt(t, delta, mu, r, r_p, phi, w, fy)
-	y0 = fy
-	K(1) = h*fy
-
-	call dpo_dt(pphi+K(1)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
-	K(2) = h*fy
-
-	call dpo_dt(pphi+K(2)/2, delta, mu, r, r_p, phi, w, t+h/2, fy)
-	K(3)=h*fy 
-
-	call dpo_dt(pphi+K(3), delta, mu, r, r_p, phi, w, t+h, fy)
-	K(4)=h*fy
-
-	result = y0 + (K(1)+2*K(2)+2*K(3)+K(4))/6
-
-end subroutine alg_RK_pphidot
 
 !----------------------
 ! 	(1) r/dt = ...
 !----------------------
-subroutine r_dt(pr, result)
+subroutine dr_dt(pr, result)
 	implicit none
 	real, intent(in) :: pr 
 	real, intent(out) :: result
 
 	result = pr 
 	
-end subroutine r_dt
+end subroutine dr_dt
 
 !----------------------
 ! 	(2) phi/dt = ...
 !----------------------
-subroutine phi_dt(pphi, result)
+subroutine dphi_dt(pphi, result)
 	implicit none
 	real, intent(in) :: pphi
 	real, intent(out) :: result
 
 	result = pphi 
 	
-end subroutine phi_dt
+end subroutine dphi_dt
 
 
 !----------------------
 ! 	(3) dp_r/dt = ...
 !----------------------
-subroutine dpr_dt(p_phi, delta, mu, r, r_p, phi, w, t, result)
+subroutine dpr_dt(r, phi, p_phi, t, delta, mu, r_p, w, result)
 	implicit none
-	real, intent(in) :: p_phi, delta, mu, r, r_p, phi, w, t
+	real, intent(in) :: r, phi, p_phi, t, delta, mu, r_p, w
 	real, intent(out) :: result
 
 	result = p_phi**2/r**3 - delta*(1/r**2 + mu/r_p**3 *(r - cos(phi-w*t)))
@@ -225,16 +177,41 @@ end subroutine dpr_dt
 !----------------------
 ! 	(4) dp_phi/dt = ...
 !----------------------
-subroutine dpo_dt(t, delta, mu, r, r_p, phi, w, result)
+subroutine dpo_dt(r, phi, t, delta, mu, r_p, w, result)
 	implicit none
-	integer, intent(in) :: t 
-	real, intent(in) :: delta, mu, r, r_p, phi, w
+	real, intent(in) :: delta, mu, r_p, w, r, phi, t
 	real, intent(out) :: result
 
 	result = - delta*mu*r*sin(phi-w*t)/r_p**3 
 	
 end subroutine dpo_dt
 
+!=============================================================
+!	Subrutina que unifica todas mis funciones en una
+!	
+!	La idea es que me proporcione claridad al resto 
+!	del codigo. Concretamente al llamarlo en la sub
+!	del algortimo Runge-Kutta
+!=============================================================
+subroutine fn(r, phi, pr, pphi, t, delta, mu, r_p, w, i, f_yt)
+	implicit none 
+	integer, intent(in) :: i 
+	real, intent(in) :: r, phi, pr, pphi, t, delta, mu, r_p, w
+
+	real, intent(out) :: f_yt
+
+	if (i==1) then
+		call dr_dt(pr, f_yt)
+	else if (i==2) then
+		call dphi_dt(pphi, f_yt)
+	else if (i==3) then 
+		call dpr_dt(r, phi, pphi, t, delta, mu, r_p, w, f_yt)
+	else if (i==4) then
+		call dpo_dt(r, phi, t, delta, mu, r_p, w, f_yt)
+	end if
+
+	
+end subroutine fn
 
 !---------------------------------------------------------------
 !	Función genérica que permite ampliar el algoritmo
