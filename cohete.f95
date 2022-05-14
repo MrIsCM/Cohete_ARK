@@ -10,10 +10,11 @@
 program cohete
 	implicit none
 
-	real :: h 		! Parametro de discretizacion 
-	integer :: t 	! Parametro de iteración temporal
+	! Parametro de iteración temporal
+	! Parametro de discretizacion
+	real :: t, h 		 
 
-	integer, parameter :: t_max = 1000
+	integer, parameter :: t_max = 6000
 	
 	! Datos del problema
 	real :: Mt, Ml, m, G, dtl, w, Rt, Rl
@@ -59,14 +60,13 @@ program cohete
 
 
 
-	! Archivo para guardar la posición del cohete
-	open(10, file='Data/Pos.dat', status='Unknown')
-
 	! Asignacion de condiciones iniciales
 	r = Rt 			! Despega de la Tierra
-	phi = 0 		! *Parece* arbitrario
-	! pr =
-	! pphi = 
+	r = r*fr 
+	phi = 2 		! *Parece* arbitrario
+	pr = 1000 		! ~ Vel. escape [m/s]
+	pr = pr*fr 
+	pphi = 1
 
 	y = (/r, phi, pr, pphi/)
 
@@ -74,6 +74,8 @@ program cohete
 	delta = G*Mt/dtl**3
 	mu = Ml/Mt
 
+	! Archivo para guardar la posición del cohete
+	open(12, file='Data/Pos.dat', status='Unknown')
 
 	! Bucle temporal
 	t=0
@@ -81,10 +83,11 @@ program cohete
 		! Calculo distancia Luna-Nave (reescalado)
 		r_p = (1+r**2-2*r*cos(phi-w*t)) 
 		call alg_RK(delta, mu, r_p, w, h, y, t)
-
+		write(12,*) t, y(1)+Rt*fr, y(2)
+		t = t+h 
 	end do 
 
-	close(10)
+	close(12)
 	
 end program cohete
 
@@ -99,7 +102,7 @@ subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 	real, intent(inout) :: t 		! t
 	real, intent(inout) :: y(4) 	! y_n(t) 	[n=1,2,3,4]
 
-	integer :: i 
+	integer :: i, j
 	real :: K(4,4), f_ynt
 
 	do i = 1, 4
@@ -119,6 +122,16 @@ subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 	do i = 1, 4
 		y(i) = y(i) + (K(i,1) + 2*K(i,2) + 2*K(i,3) + K(i,4))/6
 	end do
+
+	open(10, file='Data/k.dat', status='unknown')
+	open(11, file='Data/y.dat', status='unknown')
+	do i = 1, 4
+		write(10,*) (K(i, j), j=1,4)
+		write(11,*) t, y(i)
+
+	end do
+	close(10)
+	close(11)
 	
 end subroutine alg_RK
 
