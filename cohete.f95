@@ -29,6 +29,9 @@ program cohete
 	!Variables utilidad. Simplificar expresiones
 	real :: delta, mu, r_p
 
+	! Variable de control del bucle temporal
+	logical :: run 
+
 
 	!========================
 	!	Data: link = https://ergodic.ugr.es/cphys/index.php?id=lec_cohete
@@ -61,12 +64,10 @@ program cohete
 
 
 	! Asignacion de condiciones iniciales
-	r = Rt 			! Despega de la Tierra
-	r = r*fr 
-	phi = 2 		! *Parece* arbitrario
-	pr = 1000 		! ~ Vel. escape [m/s]
-	pr = pr*fr 
-	pphi = 1
+	r = Rt*fr 			! Despega de la Tierra 
+	phi = 0 		! *Parece* arbitrario
+	pr = 11*fr 		! ~ Vel. escape [m/s] 
+	pphi = 2
 
 	y = (/r, phi, pr, pphi/)
 
@@ -76,18 +77,26 @@ program cohete
 
 	! Archivo para guardar la posición del cohete
 	open(12, file='Data/Pos.dat', status='Unknown')
+	open(13, file='Data/PosLuna.dat', status='Unknown')
+
 
 	! Bucle temporal
 	t=0
-	do while (t<t_max)
+	run = .true.
+	do while (t<=t_max)
 		! Calculo distancia Luna-Nave (reescalado)
 		r_p = (1+r**2-2*r*cos(phi-w*t)) 
-		call alg_RK(delta, mu, r_p, w, h, y, t)
-		write(12,*) t, y(1)+Rt*fr, y(2)
-		t = t+h 
+		if (r_p <= Rl) then
+			run = .False.
+		else 
+		end if 
+			call alg_RK(delta, mu, r_p, w, h, y, t)
+			write(12,*) t, (y(1))*cos(phi), (y(1))*sin(phi)
+			write(13,*) dtl*fr*cos(w*t), dtl*fr*sin(w*t)
+			t = t+h 
 	end do 
 
-	close(12)
+	close(13)
 	
 end program cohete
 
@@ -123,15 +132,14 @@ subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 		y(i) = y(i) + (K(i,1) + 2*K(i,2) + 2*K(i,3) + K(i,4))/6
 	end do
 
-	open(10, file='Data/k.dat', status='unknown')
-	open(11, file='Data/y.dat', status='unknown')
-	do i = 1, 4
-		write(10,*) (K(i, j), j=1,4)
-		write(11,*) t, y(i)
-
-	end do
-	close(10)
-	close(11)
+	! open(10, file='Data/k.dat', status='unknown')
+	! open(11, file='Data/y.dat', status='unknown')
+	! do i = 1, 4
+	! 	write(10,*) (K(i, j), j=1,4)
+	! 	write(11,*) t, y(i)
+	! end do
+	! close(10)
+	! close(11)
 	
 end subroutine alg_RK
 
