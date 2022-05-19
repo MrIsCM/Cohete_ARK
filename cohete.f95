@@ -12,22 +12,25 @@ program cohete
 
 	! Parametro de iteración temporal
 	! Parametro de discretizacion
-	real :: t, h 		 
+	real*8 :: t, h
 
-	integer, parameter :: t_max = 6000
+	integer :: i 
+
+	integer, parameter :: t_max = 60000
+	real*8, parameter :: pi = 3.14159265359
 	
 	! Datos del problema
-	real :: Mt, Ml, m, G, dtl, w, Rt, Rl
+	real*8 :: Mt, Ml, m, G, dtl, w, Rt, Rl
 
 	! Coordenadas
-	real :: r, phi, pr, pphi
-	real :: y(4)
+	real*8 :: r, phi, pr, pphi
+	real*8 :: y(4)
 
 	!Factores de escala
-	real :: fr, fpr, fpphi
+	real*8 :: fr, fpr, fpphi
 
 	!Variables utilidad. Simplificar expresiones
-	real :: delta, mu, r_p
+	real*8 :: delta, mu, r_p
 
 	! Variable de control del bucle temporal
 	logical :: run 
@@ -65,9 +68,9 @@ program cohete
 
 	! Asignacion de condiciones iniciales
 	r = Rt*fr 			! Despega de la Tierra 
-	phi = 0 		! *Parece* arbitrario
-	pr = 11*fr 		! ~ Vel. escape [m/s] 
-	pphi = 2
+	phi = pi/4 		! *Parece* arbitrario
+	pr = 1*fr 		! ~ Vel. escape [m/s] 
+	pphi = 2*fpphi
 
 	y = (/r, phi, pr, pphi/)
 
@@ -78,41 +81,41 @@ program cohete
 	! Archivo para guardar la posición del cohete
 	open(12, file='Data/Pos.dat', status='Unknown')
 	open(13, file='Data/PosLuna.dat', status='Unknown')
-
+	open(14, file='Data/DistL_C.dat', status='Unknown')
 
 	! Bucle temporal
-	t=0
-	run = .true.
-	do while (t<=t_max)
+	!run = .true.
+	do i = 0, 1000
+		t = i*h 
+		write(12,'(F5.1,A,F14.7,A,F14.7)') t, ',', (y(1))*cos(phi),',', (y(1))*sin(phi)
+		write(13,*) dtl*fr*cos(w*t), dtl*fr*sin(w*t)
 		! Calculo distancia Luna-Nave (reescalado)
 		r_p = (1+r**2-2*r*cos(phi-w*t)) 
-		if (r_p <= Rl) then
-			run = .False.
-		else 
-		end if 
-			call alg_RK(delta, mu, r_p, w, h, y, t)
-			write(12,*) t, (y(1))*cos(phi), (y(1))*sin(phi)
-			write(13,*) dtl*fr*cos(w*t), dtl*fr*sin(w*t)
-			t = t+h 
+		write(14,*) t, r_p
+
+		call alg_RK(delta, mu, r_p, w, h, y, t)
+			
 	end do 
 
+	close(12)
 	close(13)
+	close(14)
 	
 end program cohete
 
 subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 	implicit none
-	real, intent(in) :: h
+	real*8, intent(in) :: h
 
 	! Constantes presentes en las ecs. mov
-	real, intent(in) :: delta, mu, r_p, w	
+	real*8, intent(in) :: delta, mu, r_p, w	
 
 	! Coordenadas
-	real, intent(inout) :: t 		! t
-	real, intent(inout) :: y(4) 	! y_n(t) 	[n=1,2,3,4]
+	real*8, intent(inout) :: t 		! t
+	real*8, intent(inout) :: y(4) 	! y_n(t) 	[n=1,2,3,4]
 
 	integer :: i, j
-	real :: K(4,4), f_ynt
+	real*8 :: K(4,4), f_ynt
 
 	do i = 1, 4
 		call fn(y(1), y(2), y(3), y(4), t, delta, mu, r_p, w, i, f_ynt)
@@ -149,8 +152,8 @@ end subroutine alg_RK
 !----------------------
 subroutine dr_dt(pr, result)
 	implicit none
-	real, intent(in) :: pr 
-	real, intent(out) :: result
+	real*8, intent(in) :: pr 
+	real*8, intent(out) :: result
 
 	result = pr 
 	
@@ -161,8 +164,8 @@ end subroutine dr_dt
 !----------------------
 subroutine dphi_dt(pphi, result)
 	implicit none
-	real, intent(in) :: pphi
-	real, intent(out) :: result
+	real*8, intent(in) :: pphi
+	real*8, intent(out) :: result
 
 	result = pphi 
 	
@@ -174,8 +177,8 @@ end subroutine dphi_dt
 !----------------------
 subroutine dpr_dt(r, phi, p_phi, t, delta, mu, r_p, w, result)
 	implicit none
-	real, intent(in) :: r, phi, p_phi, t, delta, mu, r_p, w
-	real, intent(out) :: result
+	real*8, intent(in) :: r, phi, p_phi, t, delta, mu, r_p, w
+	real*8, intent(out) :: result
 
 	result = p_phi**2/r**3 - delta*(1/r**2 + mu/r_p**3 *(r - cos(phi-w*t)))
 	
@@ -187,8 +190,8 @@ end subroutine dpr_dt
 !----------------------
 subroutine dpo_dt(r, phi, t, delta, mu, r_p, w, result)
 	implicit none
-	real, intent(in) :: delta, mu, r_p, w, r, phi, t
-	real, intent(out) :: result
+	real*8, intent(in) :: delta, mu, r_p, w, r, phi, t
+	real*8, intent(out) :: result
 
 	result = - delta*mu*r*sin(phi-w*t)/r_p**3 
 	
@@ -204,9 +207,9 @@ end subroutine dpo_dt
 subroutine fn(r, phi, pr, pphi, t, delta, mu, r_p, w, i, f_yt)
 	implicit none 
 	integer, intent(in) :: i 
-	real, intent(in) :: r, phi, pr, pphi, t, delta, mu, r_p, w
+	real*8, intent(in) :: r, phi, pr, pphi, t, delta, mu, r_p, w
 
-	real, intent(out) :: f_yt
+	real*8, intent(inout) :: f_yt
 
 	if (i==1) then
 		call dr_dt(pr, f_yt)
@@ -227,7 +230,7 @@ end subroutine fn
 !---------------------------------------------------------------
 ! subroutine f(x, y, result)
 !	implicit none
-! 	real, intent(in) :: x, y
-! 	real, intent(out) :: result
+! 	real*8, intent(in) :: x, y
+! 	real*8, intent(out) :: result
 
 ! end subroutine f
