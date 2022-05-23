@@ -1,5 +1,5 @@
 !=======================================
-! 		Ismael Charpentier
+! 				ICM
 !
 ! 			12/05/2022
 !
@@ -16,7 +16,7 @@ program cohete
 
 	integer :: i 
 
-	integer, parameter :: t_max = 60000
+	!integer, parameter :: t_max = 60000
 	real*8, parameter :: pi = 3.14159265359
 	
 	! Datos del problema
@@ -31,9 +31,6 @@ program cohete
 
 	!Variables utilidad. Simplificar expresiones
 	real*8 :: delta, mu, r_p
-
-	! Variable de control del bucle temporal
-	logical :: run 
 
 
 	!========================
@@ -61,38 +58,43 @@ program cohete
 	!	Parametro h: 
 	!----------------------
 	! En primer lugar lo escojo "arbitrariamente" 
-	h = 60
+	h = 0.01
 	! En segundo lugar, se utiliza el reajuste de h descrito en el guión
 
 
 
 	! Asignacion de condiciones iniciales
-	r = Rt*fr 			! Despega de la Tierra 
-	phi = pi/4 		! *Parece* arbitrario
-	pr = 1*fr 		! ~ Vel. escape [m/s] 
-	pphi = 2*fpphi
+	r = Rt*fr		! Despega de la Tierra 
+	phi = 0.023 		! *Parece* arbitrario
+	pr = 10 		! ~ Vel. escape [m/s] 
+	pphi = 0 
 
 	y = (/r, phi, pr, pphi/)
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
+	write(*,*) delta 
 	mu = Ml/Mt
 
 	! Archivo para guardar la posición del cohete
 	open(12, file='Data/Pos.dat', status='Unknown')
 	open(13, file='Data/PosLuna.dat', status='Unknown')
 	open(14, file='Data/DistL_C.dat', status='Unknown')
+	open(15, file='Data/PosPolar1.dat', status='Unknown')
 
 	! Bucle temporal
 	!run = .true.
-	do i = 0, 1000
+	do i = 0, 1000000
 		t = i*h 
-		write(12,'(F5.1,A,F14.7,A,F14.7)') t, ',', (y(1))*cos(phi),',', (y(1))*sin(phi)
-		write(13,*) dtl*fr*cos(w*t), dtl*fr*sin(w*t)
-		! Calculo distancia Luna-Nave (reescalado)
-		r_p = (1+r**2-2*r*cos(phi-w*t)) 
-		write(14,*) t, r_p
+		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 
+		if (mod(i,1000) == 0) then
+			write(15,*) t, y(1), y(2)
+			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
+			write(13,*) dtl*fr*cos(w*t), dtl*fr*sin(w*t)
+			write(14,*) t, r_p
+		end if
+		! Calculo distancia Luna-Nave (reescalado)
 		call alg_RK(delta, mu, r_p, w, h, y, t)
 			
 	end do 
@@ -100,6 +102,7 @@ program cohete
 	close(12)
 	close(13)
 	close(14)
+	close(15)
 	
 end program cohete
 
@@ -111,7 +114,7 @@ subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 	real*8, intent(in) :: delta, mu, r_p, w	
 
 	! Coordenadas
-	real*8, intent(inout) :: t 		! t
+	real*8, intent(in) :: t 		! t
 	real*8, intent(inout) :: y(4) 	! y_n(t) 	[n=1,2,3,4]
 
 	integer :: i, j
@@ -120,15 +123,21 @@ subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 	do i = 1, 4
 		call fn(y(1), y(2), y(3), y(4), t, delta, mu, r_p, w, i, f_ynt)
 		K(i,1) = h*f_ynt
-
+	end do
+		
+	do i=1,4
 		call fn(y(1) + K(1,1)/2, y(2)+ K(2,1)/2, y(3)+ K(3,1)/2, y(4)+ K(4,1)/2, t+h/2, delta, mu, r_p, w, i, f_ynt)
-		K(i,1) = h*f_ynt
+		K(i,2) = h*f_ynt
+	end do 
 
+	do i=1,4
 		call fn(y(1) + K(1,2)/2, y(2)+ K(2,2)/2, y(3)+ K(3,2)/2, y(4)+ K(4,2)/2, t+h/2, delta, mu, r_p, w, i, f_ynt)
-		K(i,1) = h*f_ynt
+		K(i,3) = h*f_ynt
+	end do 
 
+	do i=1,4
 		call fn(y(1) + K(1,3), y(2)+ K(2,3), y(3)+ K(3,3), y(4)+ K(4,3), t+h/2, delta, mu, r_p, w, i, f_ynt)
-		K(i,1) = h*f_ynt
+		K(i,4) = h*f_ynt
 	end do
 
 	do i = 1, 4
@@ -221,7 +230,6 @@ subroutine fn(r, phi, pr, pphi, t, delta, mu, r_p, w, i, f_yt)
 		call dpo_dt(r, phi, t, delta, mu, r_p, w, f_yt)
 	end if
 
-	
 end subroutine fn
 
 !---------------------------------------------------------------
