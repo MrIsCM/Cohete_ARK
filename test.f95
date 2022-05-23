@@ -56,10 +56,10 @@ program cohete
 
 
 	! Asignacion de condiciones iniciales
-	r_0 = 3*Rt				! Despega de la Tierra 
-	phi_0 = 0.3 			! *Parece* arbitrario
-	pr_0 = 10E10 			! ~ Vel. escape [m/s] 
-	pphi_0 = 1000
+	r_0 = Rt					! Despega de la Tierra 
+	phi_0 = 0.3 				! *Parece* arbitrario
+	pr_0 = m*Rt*0.0014 			! ~ Vel. escape [m/s] 
+	pphi_0 = m*Rt**2 *0.001
 
 	y = (/r_0, phi_0, pr_0, pphi_0/)
 
@@ -69,12 +69,12 @@ program cohete
 
 
 
-	do i=0, 100000
+	do i=0, 4*10000
 		t = h*i
 		if (mod(i,100) == 0) then 
 			write(10,*) t, y(1)*cos(y(2))/Rt, y(1)*sin(y(2))/Rt
 			write(11,*) t, y(1)/Rt, y(2)
-			write(12,*) t, y(3), y(4)
+			write(12,*) t, y(3)/(m*Rt), y(4)/(m*Rt**2)
 		end if 
 
 		call alg_RK(h, m, y, t)
@@ -155,13 +155,13 @@ end subroutine dphi_dt
 !----------------------
 subroutine dpr_dt(m, r, phi, p_r, p_phi, t, result)
 	implicit none
-	real*8, intent(in) :: r, phi, p_r, p_phi, m, t
-	real*8, intent(out) :: result
+	real*8, intent(in) :: r, phi, p_r, p_phi, m, t 
+	real*8, intent(out) :: result 
 
-	real*8, parameter :: G = 6.67E-11
-	real*8, parameter :: Mt = 5.9736E24
+	real*8, parameter :: G = 6.67E-11 
+	real*8, parameter :: Mt = 5.9736E24 
 
-	result = p_phi**2/(m*r**3) - G*Mt*m/r
+	result = p_phi**2/(m*r**3) - G*Mt*m/r**2
 	
 end subroutine dpr_dt
 

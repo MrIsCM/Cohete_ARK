@@ -64,16 +64,15 @@ program cohete
 
 
 	! Asignacion de condiciones iniciales
-	r = Rt*fr		! Despega de la Tierra 
-	phi = 0.023 		! *Parece* arbitrario
-	pr = 10 		! ~ Vel. escape [m/s] 
-	pphi = 0 
+	r = Rt*fr 					! Despega de la Tierra 
+	phi = 0.3 				! *Parece* arbitrario
+	pr = 0.1*fpr  			! ~ Vel. escape [m/s] 
+	pphi = 0.001*fpphi
 
 	y = (/r, phi, pr, pphi/)
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
-	write(*,*) delta 
 	mu = Ml/Mt
 
 	! Archivo para guardar la posición del cohete
@@ -84,15 +83,19 @@ program cohete
 
 	! Bucle temporal
 	!run = .true.
-	do i = 0, 1000000
+	do i = 0, 100000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 
-		if (mod(i,1000) == 0) then
-			write(15,*) t, y(1), y(2)
+		if (mod(i,100) == 0) then
+			! Cohete: tiempo, x, y 
 			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
-			write(13,*) dtl*fr*cos(w*t), dtl*fr*sin(w*t)
+			! Luna: tiempo, x_luna, y_luna
+			write(13,*) t , dtl*fr*cos(w*t), dtl*fr*sin(w*t)
+			! Distancia Luna-Cohete: tiempo, distancia
 			write(14,*) t, r_p
+			! Cohete Polares: tiempo, radio, angulo
+			write(15,*) t, y(1), y(2)
 		end if
 		! Calculo distancia Luna-Nave (reescalado)
 		call alg_RK(delta, mu, r_p, w, h, y, t)
