@@ -20,7 +20,7 @@ program cohete
 	real*8, parameter :: pi = 3.14159265359
 	
 	! Datos del problema
-	real*8 :: Mt, Ml, m, G, dtl, w, Rt, Rl
+	real*8 :: Mt, Ml, m, G, dtl, w, Rt, Rl, V
 
 	! Coordenadas
 	real*8 :: r, phi, pr, pphi
@@ -45,7 +45,7 @@ program cohete
 	Rt = 6.378160E6		! Radio Tierra [m] 
 	Rl = 1.7374E6		! Radio Luna [m] 
 
-	m = 10000 			! Masa del cohete [Kg]
+	m = 1000 			! Masa del cohete [Kg]
 
 	!-------------------------
 	! 	Factores de escala
@@ -58,7 +58,7 @@ program cohete
 	!	Parametro h: 
 	!----------------------
 	! En primer lugar lo escojo "arbitrariamente" 
-	h = 0.01
+	h = 0.8
 	! En segundo lugar, se utiliza el reajuste de h descrito en el guión
 
 
@@ -66,8 +66,8 @@ program cohete
 	! Asignacion de condiciones iniciales
 	r = Rt*fr 					! Despega de la Tierra 
 	phi = 0.3 				! *Parece* arbitrario
-	pr = 0.1*fpr  			! ~ Vel. escape [m/s] 
-	pphi = 0.001*fpphi
+	pr = 1.15E7*fpr   			! ~ Vel. escape [m/s] 
+	pphi = 1E7*fpphi
 
 	y = (/r, phi, pr, pphi/)
 
@@ -76,18 +76,24 @@ program cohete
 	mu = Ml/Mt
 
 	! Archivo para guardar la posición del cohete
-	open(12, file='Data/Pos.dat', status='Unknown')
-	open(13, file='Data/PosLuna.dat', status='Unknown')
-	open(14, file='Data/DistL_C.dat', status='Unknown')
-	open(15, file='Data/PosPolar1.dat', status='Unknown')
+	open(12, file='Data2/Pos.dat', status='Unknown')
+	open(13, file='Data2/PosLuna.dat', status='Unknown')
+	open(14, file='Data2/DistL_C.dat', status='Unknown')
+	open(15, file='Data2/PosPolar.dat', status='Unknown')
+	open(16, file='Data2/EPot.dat', status='Unknown')
+
 
 	! Bucle temporal
-	!run = .true.
-	do i = 0, 100000
+	do i = 0, 10000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
+		! if (abs(r_p)<=Rl*fr) then 
+		! 	write(*,*) t, "Habria chocado"
+		! end if 	
+		
+		call Epot(y(1), y(2), t, r_p, m, Mt, Ml, G, V)
 
-		if (mod(i,100) == 0) then
+		if (mod(i,1000) == 0) then
 			! Cohete: tiempo, x, y 
 			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
 			! Luna: tiempo, x_luna, y_luna
@@ -95,7 +101,9 @@ program cohete
 			! Distancia Luna-Cohete: tiempo, distancia
 			write(14,*) t, r_p
 			! Cohete Polares: tiempo, radio, angulo
-			write(15,*) t, y(1), y(2)
+			! write(15,*) t, y(1), y(2)
+			! Energia potencial
+			write(16,*) t, V
 		end if
 		! Calculo distancia Luna-Nave (reescalado)
 		call alg_RK(delta, mu, r_p, w, h, y, t)
@@ -106,6 +114,7 @@ program cohete
 	close(13)
 	close(14)
 	close(15)
+	close(16)
 	
 end program cohete
 
@@ -118,7 +127,7 @@ subroutine alg_RK(delta, mu, r_p, w, h, y, t)
 
 	! Coordenadas
 	real*8, intent(in) :: t 		! t
-	real*8, intent(inout) :: y(4) 	! y_n(t) 	[n=1,2,3,4]
+	real*8, intent(inout) :: y(1:4) 	! y_n(t) 	[n=1,2,3,4]
 
 	integer :: i, j
 	real*8 :: K(4,4), f_ynt
@@ -235,13 +244,10 @@ subroutine fn(r, phi, pr, pphi, t, delta, mu, r_p, w, i, f_yt)
 
 end subroutine fn
 
-!---------------------------------------------------------------
-!	Función genérica que permite ampliar el algoritmo
-!	 para EDOs de cualquier tipo, definiendo f en este apartado
-!---------------------------------------------------------------
-! subroutine f(x, y, result)
-!	implicit none
-! 	real*8, intent(in) :: x, y
-! 	real*8, intent(out) :: result
+subroutine Epot(r, phi, t, r_p,m, Mt, Ml, G, V)
+	implicit none
+	real*8, intent(in) :: r, phi, t, r_p, m, Mt, Ml, G
+	real*8, intent(out) :: V
 
-! end subroutine f
+	V = G*m*(Mt/r + Ml/r_p)
+end subroutine Epot
