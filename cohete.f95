@@ -38,14 +38,14 @@ program cohete
 	!========================
 
 	G = 6.67E-11 		! Constante de grav. univ. [N m**2 Kg**-2]
-	Mt = 5.9736E24		! Masa Tierra [Kg]
-	Ml = 0.07349E24		! Masa Luna [Kg]
+	Mt = 5.9736E24		! Masa Tierra [Kg] 		
+	Ml = 0.07349E24		! Masa Luna [Kg]	
 	dtl = 3.844E8 		! Distancia Tierra-Luna (unidad astro.) [m] 
 	w = 2.6617E-6 		! Vel. Angular Luna alrededor Tierra [s**-1]
 	Rt = 6.378160E6		! Radio Tierra [m] 
 	Rl = 1.7374E6		! Radio Luna [m] 
 
-	m = 1000 			! Masa del cohete [Kg]
+	m = 10000 			! Masa del cohete [Kg]
 
 	!-------------------------
 	! 	Factores de escala
@@ -58,33 +58,34 @@ program cohete
 	!	Parametro h: 
 	!----------------------
 	! En primer lugar lo escojo "arbitrariamente" 
-	h = 0.8
+	h = 0.1
 	! En segundo lugar, se utiliza el reajuste de h descrito en el guión
 
 
 
 	! Asignacion de condiciones iniciales
 	r = Rt*fr 					! Despega de la Tierra 
-	phi = 0.3 				! *Parece* arbitrario
-	pr = 1.15E7*fpr   			! ~ Vel. escape [m/s] 
+	phi = 0.4 				! *Parece* arbitrario
+	pr = 1.2E8*fpr   			! ~ Vel. escape [m/s] 
 	pphi = 1E7*fpphi
 
 	y = (/r, phi, pr, pphi/)
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
-	mu = Ml/Mt
+	mu = 0.01230246418
+
 
 	! Archivo para guardar la posición del cohete
-	open(12, file='Data2/Pos.dat', status='Unknown')
-	open(13, file='Data2/PosLuna.dat', status='Unknown')
-	open(14, file='Data2/DistL_C.dat', status='Unknown')
-	open(15, file='Data2/PosPolar.dat', status='Unknown')
-	open(16, file='Data2/EPot.dat', status='Unknown')
+	open(12, file='Data3/Pos.dat', status='Unknown')
+	open(13, file='Data3/PosLuna.dat', status='Unknown')
+	! open(14, file='Data2/DistL_C.dat', status='Unknown')
+	! open(15, file='Data2/PosPolar.dat', status='Unknown')
+	open(16, file='Data3/EPot.dat', status='Unknown')
 
 
 	! Bucle temporal
-	do i = 0, 10000
+	do i = 0, 1200000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 		! if (abs(r_p)<=Rl*fr) then 
@@ -93,13 +94,13 @@ program cohete
 		
 		call Epot(y(1), y(2), t, r_p, m, Mt, Ml, G, V)
 
-		if (mod(i,1000) == 0) then
+		if (mod(i,4*1000) == 0) then
 			! Cohete: tiempo, x, y 
 			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
 			! Luna: tiempo, x_luna, y_luna
 			write(13,*) t , dtl*fr*cos(w*t), dtl*fr*sin(w*t)
 			! Distancia Luna-Cohete: tiempo, distancia
-			write(14,*) t, r_p
+			! write(14,*) t, r_p
 			! Cohete Polares: tiempo, radio, angulo
 			! write(15,*) t, y(1), y(2)
 			! Energia potencial
@@ -112,8 +113,8 @@ program cohete
 
 	close(12)
 	close(13)
-	close(14)
-	close(15)
+	! close(14)
+	! close(15)
 	close(16)
 	
 end program cohete
