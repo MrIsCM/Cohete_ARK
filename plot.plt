@@ -1,5 +1,5 @@
 set terminal gif animate delay 3
-set output 'Gifs/Cohete_Luna11.gif'
+set output 'Plots/Cohete_Luna4.gif'
 
 posC = 'Data3/Pos.dat'
 posL = 'Data3/PosLuna.dat'
@@ -14,7 +14,7 @@ set yrange [-2:1.5]
 do for [bb = 0:300]{
 	set title sprintf('Frame:%03.0f',bb)
 	plot posC every ::::bb u 2:3 title 'Cohete' ,\
-		posL every ::::bb u 2:3 title 'Luna'
+		posL every ::::bb+10 u 2:3 title 'Luna'
 }
 # plot posC u 2:3, \
 # posL 

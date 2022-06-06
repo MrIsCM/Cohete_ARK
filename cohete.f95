@@ -65,15 +65,16 @@ program cohete
 
 	! Asignacion de condiciones iniciales
 	r = Rt*fr 					! Despega de la Tierra 
-	phi = 0.4 				! *Parece* arbitrario
-	pr = 1.2E8*fpr   			! ~ Vel. escape [m/s] 
+	phi = 0.35 				! *Parece* arbitrario
+	pr = 1.18E8*fpr   			! ~ Vel. escape [m/s] 
 	pphi = 1E7*fpphi
 
 	y = (/r, phi, pr, pphi/)
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
-	mu = 0.01230246418
+	mu = 0.07349/5.9736
+	
 
 
 	! Archivo para guardar la posición del cohete
@@ -85,7 +86,7 @@ program cohete
 
 
 	! Bucle temporal
-	do i = 0, 1200000
+	do i = 0, 1500000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 		! if (abs(r_p)<=Rl*fr) then 
