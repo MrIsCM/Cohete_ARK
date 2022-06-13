@@ -23,7 +23,7 @@ program cohete
 	real*8 :: Mt, Ml, m, G, dtl, w, Rt, Rl, V
 
 	! Coordenadas
-	real*8 :: r, phi, pr, pphi
+	real*8 :: r, phi, pr, pphi, theta, vel_ini  
 	real*8 :: y(4)
 
 	!Factores de escala
@@ -58,35 +58,37 @@ program cohete
 	!	Parametro h: 
 	!----------------------
 	! En primer lugar lo escojo "arbitrariamente" 
-	h = 0.1
+	h = 0.01
 	! En segundo lugar, se utiliza el reajuste de h descrito en el guión
 
 
 
 	! Asignacion de condiciones iniciales
-	r = Rt*fr 					! Despega de la Tierra 
-	phi = 0.35 				! *Parece* arbitrario
-	pr = 1.18E8*fpr   			! ~ Vel. escape [m/s] 
-	pphi = 1E7*fpphi
+	theta = pi/4					! Angulo de lanzamiento respecto a la superficie terrestre
+	vel_ini = 1E8*fpr 				! ~ Vel. escape [m/s]
+	r = Rt*fr 						! Despega de la Tierra 
+	phi = pi/2 						! *Parece* arbitrario
+	pr = vel_ini*cos(theta-phi)  		 
+	pphi = r*1.4E8*fpr*sin(theta-phi)
 
 	y = (/r, phi, pr, pphi/)
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
-	mu = 0.07349/5.9736
+	mu = 0.07349/5.9736*5
 	
 
 
 	! Archivo para guardar la posición del cohete
-	open(12, file='Data3/Pos.dat', status='Unknown')
-	open(13, file='Data3/PosLuna.dat', status='Unknown')
+	open(12, file='Data2/Pos.dat', status='Unknown')
+	open(13, file='Data2/PosLuna.dat', status='Unknown')
 	! open(14, file='Data2/DistL_C.dat', status='Unknown')
 	! open(15, file='Data2/PosPolar.dat', status='Unknown')
-	open(16, file='Data3/EPot.dat', status='Unknown')
+	open(16, file='Data2/EPot.dat', status='Unknown')
 
 
 	! Bucle temporal
-	do i = 0, 1500000
+	do i = 0, 8000000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 		! if (abs(r_p)<=Rl*fr) then 
@@ -95,7 +97,7 @@ program cohete
 		
 		call Epot(y(1), y(2), t, r_p, m, Mt, Ml, G, V)
 
-		if (mod(i,4*1000) == 0) then
+		if (mod(i,20000) == 0) then
 			! Cohete: tiempo, x, y 
 			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
 			! Luna: tiempo, x_luna, y_luna
@@ -185,12 +187,12 @@ end subroutine dr_dt
 !----------------------
 ! 	(2) phi/dt = ...
 !----------------------
-subroutine dphi_dt(pphi, result)
+subroutine dphi_dt(r, pphi, result)
 	implicit none
-	real*8, intent(in) :: pphi
+	real*8, intent(in) :: r, pphi
 	real*8, intent(out) :: result
 
-	result = pphi 
+	result = pphi/r**2 
 	
 end subroutine dphi_dt
 
@@ -237,7 +239,7 @@ subroutine fn(r, phi, pr, pphi, t, delta, mu, r_p, w, i, f_yt)
 	if (i==1) then
 		call dr_dt(pr, f_yt)
 	else if (i==2) then
-		call dphi_dt(pphi, f_yt)
+		call dphi_dt(r, pphi, f_yt)
 	else if (i==3) then 
 		call dpr_dt(r, phi, pphi, t, delta, mu, r_p, w, f_yt)
 	else if (i==4) then
@@ -251,5 +253,5 @@ subroutine Epot(r, phi, t, r_p,m, Mt, Ml, G, V)
 	real*8, intent(in) :: r, phi, t, r_p, m, Mt, Ml, G
 	real*8, intent(out) :: V
 
-	V = G*m*(Mt/r + Ml/r_p)
+	V = G*m*(0.25*Mt/r + Ml/r_p)
 end subroutine Epot
