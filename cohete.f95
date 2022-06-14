@@ -58,16 +58,16 @@ program cohete
 	!	Parametro h: 
 	!----------------------
 	! En primer lugar lo escojo "arbitrariamente" 
-	h = 0.01
+	h = 0.1
 	! En segundo lugar, se utiliza el reajuste de h descrito en el guión
 
 
 
 	! Asignacion de condiciones iniciales
-	theta = pi/4					! Angulo de lanzamiento respecto a la superficie terrestre
-	vel_ini = 1E8*fpr 				! ~ Vel. escape [m/s]
+	theta = 0.9*pi/4				! Angulo de lanzamiento respecto a la superficie terrestre
+	vel_ini = 1.11E8*fpr 				! ~ Vel. escape [m/s]
 	r = Rt*fr 						! Despega de la Tierra 
-	phi = pi/2 						! *Parece* arbitrario
+	phi = pi/4 						! *Parece* arbitrario
 	pr = vel_ini*cos(theta-phi)  		 
 	pphi = r*1.4E8*fpr*sin(theta-phi)
 
@@ -75,7 +75,7 @@ program cohete
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
-	mu = 0.07349/5.9736*5
+	mu = 0.07349/5.9736
 	
 
 
@@ -88,7 +88,7 @@ program cohete
 
 
 	! Bucle temporal
-	do i = 0, 8000000
+	do i = 0, 10000000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 		! if (abs(r_p)<=Rl*fr) then 
@@ -97,7 +97,7 @@ program cohete
 		
 		call Epot(y(1), y(2), t, r_p, m, Mt, Ml, G, V)
 
-		if (mod(i,20000) == 0) then
+		if (mod(i,50000) == 0) then
 			! Cohete: tiempo, x, y 
 			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
 			! Luna: tiempo, x_luna, y_luna
