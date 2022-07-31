@@ -23,7 +23,7 @@ program cohete
 	real*8 :: Mt, Ml, m, G, dtl, w, Rt, Rl, V
 
 	! Coordenadas
-	real*8 :: r, phi, pr, pphi
+	real*8 :: r, phi, pr, pphi, theta, vel_ini  
 	real*8 :: y(4)
 
 	!Factores de escala
@@ -38,14 +38,14 @@ program cohete
 	!========================
 
 	G = 6.67E-11 		! Constante de grav. univ. [N m**2 Kg**-2]
-	Mt = 5.9736E24		! Masa Tierra [Kg]
-	Ml = 0.07349E24		! Masa Luna [Kg]
+	Mt = 5.9736E24		! Masa Tierra [Kg] 		
+	Ml = 0.07349E24		! Masa Luna [Kg]	
 	dtl = 3.844E8 		! Distancia Tierra-Luna (unidad astro.) [m] 
 	w = 2.6617E-6 		! Vel. Angular Luna alrededor Tierra [s**-1]
 	Rt = 6.378160E6		! Radio Tierra [m] 
 	Rl = 1.7374E6		! Radio Luna [m] 
 
-	m = 1000 			! Masa del cohete [Kg]
+	m = 10000 			! Masa del cohete [Kg]
 
 	!-------------------------
 	! 	Factores de escala
@@ -58,33 +58,37 @@ program cohete
 	!	Parametro h: 
 	!----------------------
 	! En primer lugar lo escojo "arbitrariamente" 
-	h = 0.8
+	h = 0.05
 	! En segundo lugar, se utiliza el reajuste de h descrito en el guión
 
 
 
 	! Asignacion de condiciones iniciales
-	r = Rt*fr 					! Despega de la Tierra 
-	phi = 0.3 				! *Parece* arbitrario
-	pr = 1.15E7*fpr   			! ~ Vel. escape [m/s] 
-	pphi = 1E7*fpphi
+	theta = 0.95*pi/4				! Angulo de lanzamiento respecto a la superficie terrestre
+	vel_ini = 1.1135E8*fpr 				! ~ Vel. escape [m/s]
+	r = Rt*fr 						! Despega de la Tierra 
+	phi = 1.08*pi/4 						! *Parece* arbitrario
+	pr = vel_ini*cos(theta-phi)  		 
+	pphi = r*1.4E8*fpr*sin(theta-phi)
 
 	y = (/r, phi, pr, pphi/)
 
 	! Constantes de utilidad (simplificacion de expresiones)
 	delta = G*Mt/dtl**3
-	mu = Ml/Mt
+	mu = 0.07349/5.9736
+	
+
 
 	! Archivo para guardar la posición del cohete
 	open(12, file='Data2/Pos.dat', status='Unknown')
 	open(13, file='Data2/PosLuna.dat', status='Unknown')
-	open(14, file='Data2/DistL_C.dat', status='Unknown')
-	open(15, file='Data2/PosPolar.dat', status='Unknown')
+	! open(14, file='Data2/DistL_C.dat', status='Unknown')
+	! open(15, file='Data2/PosPolar.dat', status='Unknown')
 	open(16, file='Data2/EPot.dat', status='Unknown')
 
 
 	! Bucle temporal
-	do i = 0, 10000
+	do i = 0, 5*10000000
 		t = i*h 
 		r_p = (1+y(1)**2-2*y(1)*cos(phi-w*t)) 
 		! if (abs(r_p)<=Rl*fr) then 
@@ -93,13 +97,13 @@ program cohete
 		
 		call Epot(y(1), y(2), t, r_p, m, Mt, Ml, G, V)
 
-		if (mod(i,1000) == 0) then
+		if (mod(i,4*50000) == 0) then
 			! Cohete: tiempo, x, y 
 			write(12,*) t, y(1)*cos(y(2)), y(1)*sin(y(2))
 			! Luna: tiempo, x_luna, y_luna
 			write(13,*) t , dtl*fr*cos(w*t), dtl*fr*sin(w*t)
 			! Distancia Luna-Cohete: tiempo, distancia
-			write(14,*) t, r_p
+			! write(14,*) t, r_p
 			! Cohete Polares: tiempo, radio, angulo
 			! write(15,*) t, y(1), y(2)
 			! Energia potencial
@@ -112,8 +116,8 @@ program cohete
 
 	close(12)
 	close(13)
-	close(14)
-	close(15)
+	! close(14)
+	! close(15)
 	close(16)
 	
 end program cohete
@@ -183,12 +187,12 @@ end subroutine dr_dt
 !----------------------
 ! 	(2) phi/dt = ...
 !----------------------
-subroutine dphi_dt(pphi, result)
+subroutine dphi_dt(r, pphi, result)
 	implicit none
-	real*8, intent(in) :: pphi
+	real*8, intent(in) :: r, pphi
 	real*8, intent(out) :: result
 
-	result = pphi 
+	result = pphi/r**2 
 	
 end subroutine dphi_dt
 
@@ -235,7 +239,7 @@ subroutine fn(r, phi, pr, pphi, t, delta, mu, r_p, w, i, f_yt)
 	if (i==1) then
 		call dr_dt(pr, f_yt)
 	else if (i==2) then
-		call dphi_dt(pphi, f_yt)
+		call dphi_dt(r, pphi, f_yt)
 	else if (i==3) then 
 		call dpr_dt(r, phi, pphi, t, delta, mu, r_p, w, f_yt)
 	else if (i==4) then
@@ -249,5 +253,5 @@ subroutine Epot(r, phi, t, r_p,m, Mt, Ml, G, V)
 	real*8, intent(in) :: r, phi, t, r_p, m, Mt, Ml, G
 	real*8, intent(out) :: V
 
-	V = G*m*(Mt/r + Ml/r_p)
+	V = G*m*(0.25*Mt/r + Ml/r_p)
 end subroutine Epot
